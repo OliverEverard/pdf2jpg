@@ -28,7 +28,7 @@
     <div class="container mx-auto flex px-5 py-24 items-center justify-center flex-col">
       <div class="text-center lg:w-2/3 w-full">
         <h1 class="title-font sm:text-4xl text-3xl mb-4 font-medium text-gray-900">PDF2JPG Converter</h1>
-        <p class="mb-8 leading-relaxed">Please upload a PDF file, or a zip file containing multiple PDFs, and they will be converted to JPGs for you. All of this is done client side, there's no uploading of your images to the internet! Note: Zip functionality not yet implemented</p>
+        <p class="mb-8 leading-relaxed">Please upload a PDF file, or a zip file containing multiple PDFs, and they will be converted to JPGs for you. All of this is done client side, there's no uploading of your images to the internet!</p>
         <form>
           <input class="ml-4 inline-flex text-gray-700 bg-gray-100 border-0 py-2 px-6 focus:outline-none hover:bg-gray-200 rounded text-lg my-4" type="file" accept=".pdf, .zip">
           <button type="submit" class="inline-flex text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none hover:bg-blue-600 rounded text-lg my-4">Convert</button>
@@ -39,6 +39,23 @@
 </body> 
 
 <script>
+const form = document.querySelector('form');
+const processingMessage = document.createElement('div');
+processingMessage.innerText = 'Processing... This may take a while. File will download automatically. Pages processed so far: 0';
+processingMessage.style.display = 'none';
+processingMessage.classList.add('text-blue-500');
+form.appendChild(processingMessage);
+function updateProcessingMessage() {
+  processingMessage.innerText = `Processing... This may take a while. File will download automatically. Pages processed so far: ${pageCount}`;
+  if (pageCount > 0) {
+    processingMessage.style.display = 'block';
+  } else {
+    processingMessage.style.display = 'none';
+  }
+}; 
+let pageCount = 0;
+
+
   document.querySelector('form').addEventListener('submit', function(event) {
     event.preventDefault();
     var fileInput = document.querySelector('input[type="file"]');
@@ -69,6 +86,8 @@
                 });
               }));
             })(i);
+            pageCount++;
+            updateProcessingMessage();
           }
           Promise.all(promises).then(function() {
             var pdfZip = new JSZip();
@@ -113,6 +132,8 @@
                           });
                         }));
                           })(i);
+                          pageCount++;
+                          updateProcessingMessage();
                           }
                           return Promise.all(promises).then(function() {
                           var pdfZip = new JSZip();
