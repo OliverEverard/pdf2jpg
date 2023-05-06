@@ -7,6 +7,7 @@
      crossorigin="anonymous"></script>
      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js" integrity="sha512-Z8CqofpIcnJN80feS2uccz+pXWgZzeKxDsDNMD/dJ6997/LSRY+W4NmEt9acwR+Gt9OHN0kkI1CTianCwoqcjQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js" integrity="sha512-lHibs5XrZL9hXP3Dhr/d2xJgPy91f2mhVAasrSbMkbmoTSm2Kz8DuSWszBLUg31v+BM6tSiHSqT72xwjaNvl0g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.5.0/jszip.min.js"></script>
 
      <link rel="icon" type="image/x-icon" href="https://www.olieverard.co.uk/src/favicon.ico">
   </head>
@@ -36,6 +37,7 @@
     </div>
   </section>
 </body> 
+
 <script>
     document.querySelector('form').addEventListener('submit', function(event) {
       event.preventDefault();
@@ -45,29 +47,41 @@
       fileReader.onload = function() {
         var typedarray = new Uint8Array(this.result);
         pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-          return pdf.getPage(1);
-        }).then(function(page) {
-          var canvas = document.createElement('canvas');
-          canvas.width = page.view[2];
-          canvas.height = page.view[3];
-          var context = canvas.getContext('2d');
-          var renderContext = {
-            canvasContext: context,
-            viewport: page.getViewport({scale: 1})
-          };
-          page.render(renderContext).promise.then(function() {
-            var dataURL = canvas.toDataURL('image/jpeg');
-            var link = document.createElement('a');
-            link.download = 'image.jpg';
-            link.href = dataURL;
-            link.click();
+          var numPages = pdf.numPages;
+          var zip = new JSZip();
+          var promises = [];
+          for (var i = 1; i <= numPages; i++) {
+            (function(pageNumber) {
+              promises.push(pdf.getPage(pageNumber).then(function(page) {
+                var canvas = document.createElement('canvas');
+                canvas.width = page.view[2];
+                canvas.height = page.view[3];
+                var context = canvas.getContext('2d');
+                var renderContext = {
+                  canvasContext: context,
+                  viewport: page.getViewport({scale: 1})
+                };
+                return page.render(renderContext).promise.then(function() {
+                  var dataURL = canvas.toDataURL('image/jpeg');
+                  zip.file('page-' + pageNumber + '.jpg', dataURL.substr(dataURL.indexOf(',') + 1), {base64: true});
+                });
+              }));
+            })(i);
+          }
+          Promise.all(promises).then(function() {
+            zip.generateAsync({type:"blob"}).then(function(content) {
+              var link = document.createElement('a');
+              link.download = 'images.zip';
+              link.href = URL.createObjectURL(content);
+              link.click();
+            });
           });
         });
       };
       fileReader.readAsArrayBuffer(file);
     });
   </script>
-  
+
 
 
 
