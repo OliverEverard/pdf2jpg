@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>PDF2JPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8368997072131126"
+     crossorigin="anonymous"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js" integrity="sha512-Z8CqofpIcnJN80feS2uccz+pXWgZzeKxDsDNMD/dJ6997/LSRY+W4NmEt9acwR+Gt9OHN0kkI1CTianCwoqcjQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js" integrity="sha512-lHibs5XrZL9hXP3Dhr/d2xJgPy91f2mhVAasrSbMkbmoTSm2Kz8DuSWszBLUg31v+BM6tSiHSqT72xwjaNvl0g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+     <link rel="icon" type="image/x-icon" href="https://www.olieverard.co.uk/src/favicon.ico">
+  </head>
+
+  <body class="bg-white">
+    <div id="navbar-container"></div>
+
+    <script>
+
+      fetch('https://www.olieverard.co.uk/components/navbar.html')
+        .then(response => response.text())
+        .then(html => {
+          document.querySelector('#navbar-container').innerHTML = html;
+        });
+    </script>
+
+<section class="text-gray-600 body-font">
+    <div class="container mx-auto flex px-5 py-24 items-center justify-center flex-col">
+      <div class="text-center lg:w-2/3 w-full">
+        <h1 class="title-font sm:text-4xl text-3xl mb-4 font-medium text-gray-900">PDF2JPG Converter</h1>
+        <p class="mb-8 leading-relaxed">Please upload a PDF file, or a zip file containing multiple PDFs, and they will be converted to JPGs for you. All of this is done client side, there's no uploading of your images to the internet! It also may take a long time for multiple images.</p>
+        <form>
+          <input class="ml-4 inline-flex text-gray-700 bg-gray-100 border-0 py-2 px-6 focus:outline-none hover:bg-gray-200 rounded text-lg my-4" type="file" accept=".pdf, .zip">
+          <button type="submit" class="inline-flex text-white bg-blue-500 border-0 py-2 px-6 focus:outline-none hover:bg-blue-600 rounded text-lg my-4">Convert</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</body> 
+<script>
+    document.querySelector('form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      var fileInput = document.querySelector('input[type="file"]');
+      var file = fileInput.files[0];
+      var fileReader = new FileReader();
+      fileReader.onload = function() {
+        var typedarray = new Uint8Array(this.result);
+        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+          return pdf.getPage(1);
+        }).then(function(page) {
+          var canvas = document.createElement('canvas');
+          canvas.width = page.view[2];
+          canvas.height = page.view[3];
+          var context = canvas.getContext('2d');
+          var renderContext = {
+            canvasContext: context,
+            viewport: page.getViewport({scale: 1})
+          };
+          page.render(renderContext).promise.then(function() {
+            var dataURL = canvas.toDataURL('image/jpeg');
+            var link = document.createElement('a');
+            link.download = 'image.jpg';
+            link.href = dataURL;
+            link.click();
+          });
+        });
+      };
+      fileReader.readAsArrayBuffer(file);
+    });
+  </script>
+  
+
+
+
+
+
+
