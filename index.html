@@ -39,12 +39,14 @@
 </body> 
 
 <script>
-    document.querySelector('form').addEventListener('submit', function(event) {
-      event.preventDefault();
-      var fileInput = document.querySelector('input[type="file"]');
-      var file = fileInput.files[0];
-      var fileReader = new FileReader();
-      fileReader.onload = function() {
+  document.querySelector('form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    var fileInput = document.querySelector('input[type="file"]');
+    var file = fileInput.files[0];
+    var fileReader = new FileReader();
+    fileReader.onload = function() {
+      var extension = file.name.split('.').pop();
+      if (extension === 'pdf') {
         var typedarray = new Uint8Array(this.result);
         pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
           var numPages = pdf.numPages;
@@ -69,18 +71,83 @@
             })(i);
           }
           Promise.all(promises).then(function() {
+            var pdfZip = new JSZip();
+            pdfZip.file(file.name, typedarray);
             zip.generateAsync({type:"blob"}).then(function(content) {
+              pdfZip.file('images.zip', content);
               var link = document.createElement('a');
-              link.download = 'images.zip';
-              link.href = URL.createObjectURL(content);
-              link.click();
+              link.download = 'pdfs.zip';
+              pdfZip.generateAsync({type:"blob"}).then(function(content) {
+                link.href = URL.createObjectURL(content);
+                link.click();
+              });
             });
           });
         });
-      };
-      fileReader.readAsArrayBuffer(file);
-    });
-  </script>
+      } else if (extension === 'zip') {
+        var zip = new JSZip();
+        zip.loadAsync(this.result).then(function(zip) {
+          var promises = [];
+          zip.forEach(function(relativePath, zipEntry) {
+            var extension = relativePath.split('.').pop();
+            if (extension === 'pdf') {
+              promises.push(zipEntry.async('uint8array').then(function(typedarray) {
+                return pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                  var numPages = pdf.numPages;
+                  var zip = new JSZip();
+                  var promises = [];
+                  for (var i = 1; i <= numPages; i++) {
+                    (function(pageNumber) {
+                      promises.push(pdf.getPage(pageNumber).then(function(page) {
+                        var canvas = document.createElement('canvas');
+                        canvas.width = page.view[2];
+                        canvas.height = page.view[3];
+                        var context = canvas.getContext('2d');
+                        var renderContext = {
+                          canvasContext: context,
+                          viewport: page.getViewport({scale: 1})
+                        };
+                        return page.render(renderContext).promise.then(function() {
+                          var dataURL = canvas.toDataURL('image/jpeg');
+                          zip.file('page-' + pageNumber + '.jpg',dataURL.substr(dataURL.indexOf(',') + 1), {base64: true});
+                          });
+                        }));
+                          })(i);
+                          }
+                          return Promise.all(promises).then(function() {
+                          var pdfZip = new JSZip();
+                          pdfZip.file(relativePath, typedarray);
+                          return zip.generateAsync({type:"blob"}).then(function(content) {
+                          pdfZip.file('images.zip', content);
+                          return pdfZip.generateAsync({type:"blob"}).then(function(content) {
+                          return {name: relativePath, content: content};
+                          });
+                          });
+                          });
+                          });
+                          }));
+                          }
+                          });
+                          Promise.all(promises).then(function(results) {
+                          var zip = new JSZip();
+                          results.forEach(function(result) {
+                          zip.file(result.name.replace('.pdf', '') + '.zip', result.content);
+                          });
+                          var link = document.createElement('a');
+                          link.download = 'pdfs.zip';
+                          zip.generateAsync({type:"blob"}).then(function(content) {
+                          link.href = URL.createObjectURL(content);
+                          link.click();
+                          });
+                          });
+                          });
+                          } else {
+                          alert('Please select a PDF or ZIP file.');
+                          }
+                          };
+                          fileReader.readAsArrayBuffer(file);
+                          });
+                          </script>
 
 
 
